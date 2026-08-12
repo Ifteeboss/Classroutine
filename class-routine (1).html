@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Class Schedule</title>
+<style>
+  :root {
+    --navy: #0b3d91;
+    --border: #e3e6ea;
+    --text-dark: #1a1a1a;
+    --text-muted: #444;
+    --blue-link: #2e7bd6;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 40px 16px;
+    background: #f4f5f7;
+    font-family: "Segoe UI", Arial, Helvetica, sans-serif;
+    color: var(--text-dark);
+  }
+
+  .card {
+    max-width: 900px;
+    margin: 0 auto 24px auto;
+    background: #ffffff;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+
+  .card-header {
+    background: var(--navy);
+    color: #fff;
+    padding: 14px 24px;
+    font-size: 20px;
+    font-weight: 500;
+  }
+
+  table.schedule {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  table.schedule tr {
+    border-bottom: 1px solid var(--border);
+  }
+
+  table.schedule tr:last-child {
+    border-bottom: none;
+  }
+
+  table.schedule tr.today-row {
+    background: #f0f6ff;
+  }
+
+  table.schedule td {
+    vertical-align: top;
+    padding: 16px 24px;
+  }
+
+  .date-cell {
+    width: 160px;
+    font-weight: 700;
+    color: var(--text-dark);
+    white-space: nowrap;
+  }
+
+  .no-class {
+    color: #888;
+    font-style: italic;
+  }
+
+  .course-name {
+    color: var(--blue-link);
+    font-weight: 600;
+    font-size: 14px;
+    text-decoration: none;
+  }
+
+  .course-name:hover {
+    text-decoration: underline;
+  }
+
+  .course-detail {
+    margin-top: 4px;
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  .course-detail b {
+    color: var(--text-dark);
+  }
+
+  .courses-row-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+  }
+
+  .courses-row-wrap > div {
+    flex: 1 1 300px;
+  }
+
+  .reg-header {
+    background: var(--navy);
+    color: #fff;
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .reg-header span { font-size: 18px; }
+
+  .reg-select {
+    padding: 6px 10px;
+    border-radius: 3px;
+    border: none;
+    font-size: 14px;
+    background: #fff;
+    color: var(--text-dark);
+  }
+
+  @media (max-width: 640px) {
+    table.schedule, table.schedule tbody, table.schedule tr, table.schedule td {
+      display: block;
+      width: 100%;
+    }
+    table.schedule td { padding: 10px 16px; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="card">
+    <div class="card-header">Class Schedule</div>
+    <table class="schedule" id="scheduleTable"></table>
+  </div>
+
+  <div class="card">
+    <div class="reg-header">
+      <span>Registration</span>
+      <select class="reg-select">
+        <option>2025-2026, Summer</option>
+      </select>
+    </div>
+  </div>
+
+<script>
+  /* ---------------------------------------------------------------
+     EDIT THIS OBJECT TO MATCH YOUR REAL WEEKLY ROUTINE.
+     Keys are day-of-week numbers: 0=Sunday, 1=Monday, 2=Tuesday,
+     3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday.
+     Each day is an array of course objects. Leave the array empty
+     ( [] ) for days with no class.
+  --------------------------------------------------------------- */
+  const WEEKLY_SCHEDULE = {
+    0: [ // Sunday
+      { name: "SOFTWARE ENGINEERING [D]", time: "Sun 10:20 AM - 12:40 PM", room: "DS0204" },
+      { name: "OPERATING SYSTEM [F]",      time: "Sun 3:00 PM - 5:00 PM",  room: "9304" }
+    ],
+    1: [ // Monday
+      { name: "DATA COMMUNICATION [D]", time: "Mon 3:00 PM - 5:20 PM",  room: "DS0406" },
+      { name: "COMPUTER GRAPHICS [C]",  time: "Mon 12:40 PM - 3:00 PM", room: "DS0107" }
+    ],
+    2: [ // Tuesday
+      { name: "SOFTWARE ENGINEERING [D]", time: "Tue 10:20 AM - 12:20 PM", room: "9305" },
+      { name: "OPERATING SYSTEM [F]",      time: "Tue 3:00 PM - 5:20 PM",  room: "DS0205" }
+    ],
+    3: [ // Wednesday
+      { name: "DATA COMMUNICATION [D]", time: "Wed 3:00 PM - 5:00 PM",  room: "9401" },
+      { name: "COMPUTER GRAPHICS [C]",  time: "Wed 12:40 PM - 2:40 PM", room: "9206" }
+    ],
+    4: [], // Thursday
+    5: [], // Friday
+    6: []  // Saturday
+  };
+
+  const DAYS_TO_SHOW = 7; // how many days ahead to list
+
+  function formatDate(d) {
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = d.toLocaleString("en-US", { month: "short" });
+    const year = d.getFullYear();
+    return `${day}-${month}-${year}`;
+  }
+
+  function buildRow(label, courses, isToday) {
+    const tr = document.createElement("tr");
+    if (isToday) tr.className = "today-row";
+
+    const dateTd = document.createElement("td");
+    dateTd.className = "date-cell";
+    dateTd.textContent = label;
+    tr.appendChild(dateTd);
+
+    const contentTd = document.createElement("td");
+    contentTd.colSpan = 2;
+
+    if (courses.length === 0) {
+      const span = document.createElement("span");
+      span.className = "no-class";
+      span.textContent = "No Class On This Day";
+      contentTd.appendChild(span);
+    } else {
+      const wrap = document.createElement("div");
+      wrap.className = "courses-row-wrap";
+      courses.forEach(c => {
+        const block = document.createElement("div");
+        block.innerHTML = `
+          <a class="course-name" href="#">${c.name}</a>
+          <div class="course-detail">Time: <b>${c.time}</b> &nbsp; Room: <b>${c.room}</b></div>
+        `;
+        wrap.appendChild(block);
+      });
+      contentTd.appendChild(wrap);
+    }
+
+    tr.appendChild(contentTd);
+    return tr;
+  }
+
+  function renderSchedule() {
+    const table = document.getElementById("scheduleTable");
+    table.innerHTML = "";
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    for (let i = 0; i < DAYS_TO_SHOW; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() + i);
+
+      const dow = d.getDay();
+      const courses = WEEKLY_SCHEDULE[dow] || [];
+
+      let label;
+      if (i === 0) label = "Today";
+      else if (i === 1) label = "Tomorrow";
+      else label = formatDate(d);
+
+      table.appendChild(buildRow(label, courses, i === 0));
+    }
+  }
+
+  renderSchedule();
+
+  // Auto-refresh at the next local midnight so "Today" rolls over
+  // without needing a page reload.
+  function scheduleMidnightRefresh() {
+    const now = new Date();
+    const nextMidnight = new Date(now);
+    nextMidnight.setHours(24, 0, 5, 0); // a few seconds after midnight
+    const msUntilMidnight = nextMidnight - now;
+    setTimeout(() => {
+      renderSchedule();
+      scheduleMidnightRefresh();
+    }, msUntilMidnight);
+  }
+  scheduleMidnightRefresh();
+</script>
+
+</body>
+</html>
